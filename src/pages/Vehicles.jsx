@@ -51,7 +51,7 @@ export default function Vehicles() {
           <article className="vehicle-row" key={v.id}>
             <div className="vehicle-index">{index+1}</div>
             <img className="vehicle-thumb"
-              src={miniaturaVehiculo(v.photos?.[0] || `${import.meta.env.BASE_URL}assets/ui/isotipo.png`, 560)}
+              src={miniaturaVehiculo(v.photos?.[0] || `${import.meta.env.BASE_URL}assets/ui/isotipo.png`, 320)}
               onError={e => { const original = v.photos?.[0] || `${import.meta.env.BASE_URL}assets/ui/isotipo.png`; if (e.currentTarget.getAttribute('src') !== original) e.currentTarget.src = original }}
               alt={v.title} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" />
             <div className="vehicle-info">

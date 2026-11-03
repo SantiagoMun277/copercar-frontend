@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { jsPDF } from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import * as XLSX from 'xlsx'
+import * as XLSX from '../utils/excelExport'
 import Modal from '../components/Modal'
 import PageTitle from '../components/PageTitle'
 import { useAppData } from '../context/AppDataContext'
