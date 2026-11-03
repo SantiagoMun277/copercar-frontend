@@ -24,6 +24,7 @@ export default function VehicleForm() {
   const [error,setError]=useState('')
   const [fieldErrors,setFieldErrors]=useState({})
   const [saving,setSaving]=useState(false)
+  const [removingPhoto,setRemovingPhoto]=useState(null)
   const [catalogo,setCatalogo]=useState(null)
   const [catalogError,setCatalogError]=useState('')
   useEffect(() => {
@@ -72,12 +73,31 @@ export default function VehicleForm() {
     } finally {setSaving(false)}
   }
   const removePhoto=async (p,i)=>{
+    if (saving || removingPhoto !== null) return
     if (backendMode && editing && typeof p === 'string' && !p.startsWith('data:')) {
       const record=existing?.photoRecords?.find(x=>x.url===p)
-      if(!record?.id){setError('No se pudo identificar la fotografía seleccionada.');return}
+      if(!record?.id){setError('No se pudo identificar la fotografía seleccionada. Actualiza la página e inténtalo nuevamente.');return}
       if(!window.confirm('¿Eliminar esta fotografía del vehículo?'))return
-      try {await apiRequest(`/vehiculos/eliminar_foto/${record.id}`,{method:'DELETE'});change('photos',form.photos.filter((_,j)=>j!==i));await refreshVehicles();setError('')}
-      catch {setError('No fue posible eliminar la fotografía. Inténtalo nuevamente.')}
+      setRemovingPhoto(record.id)
+      setError('')
+      // Solo se retira visualmente tras confirmar la eliminación en el servidor.
+      try {
+        await apiRequest(`/vehiculos/eliminar_foto/${record.id}`,{method:'DELETE'})
+      } catch (e) {
+        setError(e?.status === 404
+          ? 'Esta fotografía no se encontró en el servidor. Actualiza la página y verifica si ya fue eliminada.'
+          : 'No fue posible eliminar la fotografía. Inténtalo nuevamente.')
+        setRemovingPhoto(null)
+        return
+      }
+      setForm(current=>({...current,photos:(current.photos||[]).filter((_,j)=>j!==i)}))
+      try {
+        await refreshVehicles()
+        setError('')
+      } catch {
+        // La eliminación ya ocurrió: no presentar un error que invite a repetirla.
+        setError('La fotografía se eliminó, pero no se pudo actualizar el inventario. Actualiza la página antes de guardar cambios.')
+      } finally { setRemovingPhoto(null) }
       return
     }
     change('photos',form.photos.filter((_,j)=>j!==i))
@@ -111,11 +131,11 @@ export default function VehicleForm() {
           <label className="field" data-field-key="city" data-invalid={Boolean(fieldErrors.city)}><span>Ciudad o municipio de Matrícula*</span>{backendMode ? <SearchableSelect value={matchingCity ? String(matchingCity.id) : ''} options={cityOptions} onChange={value=>{selectCity(value);clearError('city')}} placeholder={catalogo ? 'Buscar municipio o departamento' : 'No hay municipios disponibles'} ariaLabel="Ciudad o municipio de matrícula" disabled={!catalogo}/> : <SearchableSelect value={form.city} options={citiesByDepartment[form.department]||[]} onChange={city=>{setForm(f=>({...f,city,cityId:null}));clearError('city')}} placeholder="Buscar o escribir municipio" ariaLabel="Ciudad o municipio de matrícula" allowCustom />}<small className="field-hint">{backendMode ? 'Selecciona solo la ciudad. El departamento se selecciona automáticamente.' : 'Selecciona una ciudad.'}</small>{fieldErrors.city && <small className="field-validation-message">{fieldErrors.city}</small>}</label>
 
         </div>
-        <div className="photo-section"><label className="btn btn-orange upload-label">+Agregar foto<input type="file" accept="image/*" multiple onChange={onFiles}/></label><div className="photo-grid">{(form.photos||[]).map((p,i)=><div className="photo-item" key={i}><img src={p}/><button type="button" onClick={()=>removePhoto(p,i)}>×</button></div>)}</div></div>
+        <div className="photo-section"><label className="btn btn-orange upload-label">+Agregar foto<input type="file" accept="image/*" multiple onChange={onFiles}/></label><div className="photo-grid">{(form.photos||[]).map((p,i)=><div className="photo-item" key={i}><img src={p}/><button type="button" disabled={saving || removingPhoto !== null} onClick={()=>removePhoto(p,i)}>×</button></div>)}</div></div>
         <div className="doc-section"><h3>SOAT</h3><div className="doc-grid"><label className="field date-field" data-field-key="soatExpiry" data-invalid={Boolean(fieldErrors.soatExpiry)} style={{gridColumn:'1 / -1'}}><span>Vigencia hasta</span><input type="date" value={form.soatExpiry} onChange={e=>change('soatExpiry',e.target.value)}/>{fieldErrors.soatExpiry && <small className="field-validation-message">{fieldErrors.soatExpiry}</small>}</label></div></div>
         <div className="doc-section"><h3>Revisión Tecnomecánica</h3><div className="doc-grid"><label className="field date-field" data-field-key="rtmExpiry" data-invalid={Boolean(fieldErrors.rtmExpiry)} style={{gridColumn:'1 / -1'}}><span>Vigencia hasta</span><input type="date" value={form.rtmExpiry} onChange={e=>change('rtmExpiry',e.target.value)}/>{fieldErrors.rtmExpiry && <small className="field-validation-message">{fieldErrors.rtmExpiry}</small>}</label></div></div>
         {catalogError && backendMode && <div className="form-error form-wide" role="alert">{catalogError}</div>}{error&&<div className="form-error form-wide" role="alert">{error}</div>}
-        <div className="form-actions"><button className="btn btn-orange" disabled={saving}>Guardar</button><button className="btn btn-orange secondary-orange" type="button" onClick={()=>navigate('/vehiculos')}>Cancelar</button></div>
+        <div className="form-actions"><button className="btn btn-orange" disabled={saving || removingPhoto !== null}>Guardar</button><button className="btn btn-orange secondary-orange" type="button" onClick={()=>navigate('/vehiculos')}>Cancelar</button></div>
       </form>
     </section>
   )

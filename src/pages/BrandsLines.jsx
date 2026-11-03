@@ -56,13 +56,25 @@ export default function BrandsLines() {
   const refresh = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await Promise.allSettled([catalogos.listarMarcas(), catalogos.listarLineas()])
-      let m, l
-      if (data.every(x => x.status === 'fulfilled')) {
-        m = data[0].value
-        l = data[1].value
+      let m, l, catalogoServidorDisponible = false
+      try {
+        // Una consulta trae marcas y sus líneas anidadas.
+        // Evita llamar dos veces al mismo endpoint.
+        const catalogo = await catalogos.listarCatalogo()
+        m = catalogo.map(marca => ({
+          id_marca: marca.id_marca,
+          nombre: marca.nombre,
+          activo: marca.activo ?? true,
+        }))
+        l = catalogo.flatMap(marca => (marca.lineas || []).map(linea => ({
+          id_linea: linea.id_linea,
+          id_marca: linea.id_marca ?? marca.id_marca,
+          nombre: linea.nombre,
+          activo: linea.activo ?? true,
+        })))
+        catalogoServidorDisponible = true
         setRespaldo(false)
-      } else {
+      } catch {
         const response = await fetch(`${import.meta.env.BASE_URL}catalogos/copercar.json`, { cache: 'no-store' })
         if (!response.ok) throw new Error('No se pudo consultar el catálogo.')
         const db = await response.json()
@@ -76,7 +88,7 @@ export default function BrandsLines() {
       setLineas(lineasActivas)
       // Si un elemento vuelve a estar activo según el backend, deja de aparecer
       // en la sección de inactivos locales.
-      if (data.every(x => x.status === 'fulfilled')) {
+      if (catalogoServidorDisponible) {
         setConocidos(prev => ({
           marcas: prev.marcas.filter(x => !marcasActivas.some(marca => marca.id === x.id)),
           lineas: prev.lineas.filter(x => !lineasActivas.some(linea => linea.id === x.id)),
