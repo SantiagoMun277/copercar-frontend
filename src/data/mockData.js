@@ -1,0 +1,92 @@
+export const demoUsers = [
+  {
+    id: 1,
+    role: 'admin',
+    documentType: 'Cédula',
+    documentNumber: '71984655',
+    firstName: 'Juan',
+    secondName: '',
+    lastName: 'Pérez',
+    secondLastName: '',
+    email: 'admin@copercar.com',
+    phone: '3012345678',
+    birthDate: '1985-05-25',
+    gender: 'Masculino',
+    password: 'Admin123*',
+    address: 'Calle 123 #45-67, Cali',
+  },
+  {
+    id: 2,
+    role: 'asesor',
+    documentType: 'Cédula',
+    documentNumber: '55112233',
+    firstName: 'Ana',
+    secondName: '',
+    lastName: 'Gómez',
+    secondLastName: '',
+    email: 'asesor@copercar.com',
+    phone: '3105558899',
+    birthDate: '1992-08-11',
+    gender: 'Femenino',
+    password: 'Asesor123*',
+    address: 'Cra 7 #18-20, Cali',
+  },
+  {
+    id: 3,
+    role: 'asesor',
+    documentType: 'Cédula',
+    documentNumber: '99887766',
+    firstName: 'Carlos',
+    secondName: '',
+    lastName: 'Ruiz',
+    secondLastName: '',
+    email: 'carlos.ruiz@copercar.com',
+    phone: '3209991234',
+    birthDate: '1989-03-17',
+    gender: 'Masculino',
+    password: 'Carlos123*',
+    address: 'Av 6N #24-18, Cali',
+  },
+]
+
+export const demoVehicles = [
+  {
+    id: 1,
+    title: 'MAZDA CX-30 GRAND TOURING LX HÍBRIDA',
+    status: 'Disponible',
+    brand: 'Mazda', line: 'CX-30 Grand Touring LX', color: 'PLATA', year: 2023,
+    plate: 'QKJ123', mileage: 45000, price: 116500000, owners: 2, engine: '2.5', fuel: 'Híbrida',
+    transmission: 'Automática', department: 'VALLE DEL CAUCA', city: 'Cali',
+    photos: ['/assets/vehicles/vehicle-1.png'], soatNumber: '', soatExpiry: '2025-09-01', rtmNumber: '', rtmExpiry: '',
+  },
+  {
+    id: 2, title: 'CHEVROLET ONIX RS-Motor 1.0 turbo', status: 'Disponible', brand: 'Chevrolet', line: 'Onix RS', color: 'BLANCO', year: 2022,
+    plate: 'ORS456', mileage: 51700, price: 62000000, owners: 1, engine: '1.0', fuel: 'Gasolina', transmission: 'Mecánica', department: 'VALLE DEL CAUCA', city: 'Cali',
+    photos: ['/assets/vehicles/vehicle-2.png'], soatNumber: '', soatExpiry: '', rtmNumber: '', rtmExpiry: '',
+  },
+  {
+    id: 3, title: 'VOLVO C40', status: 'Ingresando', brand: 'Volvo', line: 'C40', color: 'AZUL', year: 2023,
+    plate: 'LYR120', mileage: 0, price: 212000000, owners: 1, engine: 'Eléctrico', fuel: 'Eléctrico', transmission: 'Automática', department: 'VALLE DEL CAUCA', city: 'Cali',
+    photos: ['/assets/vehicles/vehicle-3.png'], soatNumber: '', soatExpiry: '', rtmNumber: '', rtmExpiry: '',
+  },
+  {
+    id: 4, title: 'TOYOTA COROLLA CROSS', status: 'No disponible', brand: 'Toyota', line: 'Corolla Cross', color: 'NEGRO', year: 2024,
+    plate: 'ABC123', mileage: 44400, price: 121900000, owners: 1, engine: '2.0', fuel: 'Gasolina', transmission: 'Automática', department: 'VALLE DEL CAUCA', city: 'Cali',
+    photos: ['/assets/vehicles/vehicle-4.png'], soatNumber: '', soatExpiry: '2026-04-01', rtmNumber: '', rtmExpiry: '',
+  },
+  {
+    id: 5, title: 'Renault Sandero 2018 Autentiqué LIFE', status: 'Vendido', brand: 'Renault', line: 'Sandero', color: 'AZUL', year: 2018,
+    plate: 'MFH297', mileage: 90000, price: 42000000, owners: 3, engine: '1.6', fuel: 'Gasolina', transmission: 'Mecánica', department: 'VALLE DEL CAUCA', city: 'Cali',
+    photos: ['/assets/vehicles/vehicle-5.png'], soatNumber: '', soatExpiry: '2026-02-14', rtmNumber: '', rtmExpiry: '2026-04-29',
+  },
+]
+
+// Datos DEMO coherentes con el inventario. No son registros reales de COPERCAR.
+export const demoMovements = [
+  { id: 1, vehicleId: 1, plate: 'QKJ123', vehicle: 'MAZDA CX-30 GRAND TOURING LX HÍBRIDA', type: 'Compra', date: '2026-05-02', value: 101000000, userId: 1, user: 'Juan Pérez', observation: 'Compra de demostración' },
+  { id: 2, vehicleId: 2, plate: 'ORS456', vehicle: 'CHEVROLET ONIX RS-Motor 1.0 turbo', type: 'Compra', date: '2026-05-08', value: 49000000, userId: 2, user: 'Ana Gómez', observation: '' },
+  { id: 3, vehicleId: 5, plate: 'MFH297', vehicle: 'Renault Sandero 2018 Autentiqué LIFE', type: 'Compra', date: '2026-05-10', value: 35000000, userId: 3, user: 'Carlos Ruiz', observation: '' },
+  { id: 4, vehicleId: 5, plate: 'MFH297', vehicle: 'Renault Sandero 2018 Autentiqué LIFE', type: 'Venta', date: '2026-05-18', value: 42000000, userId: 1, user: 'Juan Pérez', observation: 'Venta de demostración' },
+  { id: 5, vehicleId: 4, plate: 'ABC123', vehicle: 'TOYOTA COROLLA CROSS', type: 'Compra', date: '2026-06-04', value: 108000000, userId: 2, user: 'Ana Gómez', observation: '' },
+  { id: 6, vehicleId: 3, plate: 'LYR120', vehicle: 'VOLVO C40', type: 'Compra', date: '2026-06-15', value: 190000000, userId: 3, user: 'Carlos Ruiz', observation: '' },
+]
