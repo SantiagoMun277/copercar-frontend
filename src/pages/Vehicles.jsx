@@ -75,7 +75,7 @@ export default function Vehicles() {
         {filtered.map((v, index) => (
           <article className="vehicle-row" key={v.id}>
             <div className="vehicle-index">{index+1}</div>
-            <img className="vehicle-thumb" src={v.photos?.[0] || '/assets/ui/isotipo.png'} alt={v.title} />
+            <img className="vehicle-thumb" src={v.photos?.[0] || `${import.meta.env.BASE_URL}assets/ui/isotipo.png`} alt={v.title} />
             <div className="vehicle-info">
               <strong>{v.title}</strong>
               <span>Modelo {v.year}</span><span>{v.transmission}</span><span>{Number(v.mileage).toLocaleString('es-CO')} km</span>

@@ -57,27 +57,27 @@ export const demoVehicles = [
     brand: 'Mazda', line: 'CX-30 Grand Touring LX', color: 'PLATA', year: 2023,
     plate: 'QKJ123', mileage: 45000, price: 116500000, owners: 2, engine: '2.5', fuel: 'Híbrida',
     transmission: 'Automática', department: 'VALLE DEL CAUCA', city: 'Cali',
-    photos: ['/assets/vehicles/vehicle-1.png'], soatNumber: '', soatExpiry: '2025-09-01', rtmNumber: '', rtmExpiry: '',
+    photos: [`${import.meta.env.BASE_URL}assets/vehicles/vehicle-1.png`], soatNumber: '', soatExpiry: '2025-09-01', rtmNumber: '', rtmExpiry: '',
   },
   {
     id: 2, title: 'CHEVROLET ONIX RS-Motor 1.0 turbo', status: 'Disponible', brand: 'Chevrolet', line: 'Onix RS', color: 'BLANCO', year: 2022,
     plate: 'ORS456', mileage: 51700, price: 62000000, owners: 1, engine: '1.0', fuel: 'Gasolina', transmission: 'Mecánica', department: 'VALLE DEL CAUCA', city: 'Cali',
-    photos: ['/assets/vehicles/vehicle-2.png'], soatNumber: '', soatExpiry: '', rtmNumber: '', rtmExpiry: '',
+    photos: [`${import.meta.env.BASE_URL}assets/vehicles/vehicle-2.png`], soatNumber: '', soatExpiry: '', rtmNumber: '', rtmExpiry: '',
   },
   {
     id: 3, title: 'VOLVO C40', status: 'Ingresando', brand: 'Volvo', line: 'C40', color: 'AZUL', year: 2023,
     plate: 'LYR120', mileage: 0, price: 212000000, owners: 1, engine: 'Eléctrico', fuel: 'Eléctrico', transmission: 'Automática', department: 'VALLE DEL CAUCA', city: 'Cali',
-    photos: ['/assets/vehicles/vehicle-3.png'], soatNumber: '', soatExpiry: '', rtmNumber: '', rtmExpiry: '',
+    photos: [`${import.meta.env.BASE_URL}assets/vehicles/vehicle-3.png`], soatNumber: '', soatExpiry: '', rtmNumber: '', rtmExpiry: '',
   },
   {
     id: 4, title: 'TOYOTA COROLLA CROSS', status: 'No disponible', brand: 'Toyota', line: 'Corolla Cross', color: 'NEGRO', year: 2024,
     plate: 'ABC123', mileage: 44400, price: 121900000, owners: 1, engine: '2.0', fuel: 'Gasolina', transmission: 'Automática', department: 'VALLE DEL CAUCA', city: 'Cali',
-    photos: ['/assets/vehicles/vehicle-4.png'], soatNumber: '', soatExpiry: '2026-04-01', rtmNumber: '', rtmExpiry: '',
+    photos: [`${import.meta.env.BASE_URL}assets/vehicles/vehicle-4.png`], soatNumber: '', soatExpiry: '2026-04-01', rtmNumber: '', rtmExpiry: '',
   },
   {
     id: 5, title: 'Renault Sandero 2018 Autentiqué LIFE', status: 'Vendido', brand: 'Renault', line: 'Sandero', color: 'AZUL', year: 2018,
     plate: 'MFH297', mileage: 90000, price: 42000000, owners: 3, engine: '1.6', fuel: 'Gasolina', transmission: 'Mecánica', department: 'VALLE DEL CAUCA', city: 'Cali',
-    photos: ['/assets/vehicles/vehicle-5.png'], soatNumber: '', soatExpiry: '2026-02-14', rtmNumber: '', rtmExpiry: '2026-04-29',
+    photos: [`${import.meta.env.BASE_URL}assets/vehicles/vehicle-5.png`], soatNumber: '', soatExpiry: '2026-02-14', rtmNumber: '', rtmExpiry: '2026-04-29',
   },
 ]
 

@@ -63,7 +63,7 @@ export default function BrandsLines() {
         l = data[1].value
         setRespaldo(false)
       } else {
-        const response = await fetch('/catalogos/copercar.json', { cache: 'no-store' })
+        const response = await fetch(`${import.meta.env.BASE_URL}catalogos/copercar.json`, { cache: 'no-store' })
         if (!response.ok) throw new Error('No se pudo consultar el catálogo.')
         const db = await response.json()
         m = db.marcas || []

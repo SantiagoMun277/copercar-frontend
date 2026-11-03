@@ -26,10 +26,10 @@ export default function Login() {
 
   return (
     <div className="login-page">
-      <div className="login-brandbar"><img src="/assets/ui/logo-wordmark.png" alt="COPERCAR" /></div>
+      <div className="login-brandbar"><img src={`${import.meta.env.BASE_URL}assets/ui/logo-wordmark.png`} alt="COPERCAR" /></div>
       <div className="login-center">
         <form className="login-card" onSubmit={submit}>
-          <div className="login-hero"><img src="/assets/ui/isotipo.png" alt="COPERCAR" /></div>
+          <div className="login-hero"><img src={`${import.meta.env.BASE_URL}assets/ui/isotipo.png`} alt="COPERCAR" /></div>
           <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="Digite el correo electrónico" aria-label="Correo electrónico" required />
           <PasswordField value={password} onChange={e=>setPassword(e.target.value)} placeholder="Digite la contraseña" required autoComplete="current-password" />
           {error && <div className="form-error">{error}</div>}

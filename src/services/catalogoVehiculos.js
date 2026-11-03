@@ -4,7 +4,7 @@ import { listarMarcas, listarLineas } from './brandsLines'
 // lo actualiza con las marcas/líneas reales del servicio. No crea datos ni guarda cambios.
 const list = result => Array.isArray(result) ? result : Array.isArray(result?.items) ? result.items : null
 export async function cargarCatalogoVehiculos() {
-  const response=await fetch('/catalogos/copercar.json',{cache:'no-store'})
+  const response=await fetch(`${import.meta.env.BASE_URL}catalogos/copercar.json`,{cache:'no-store'})
   if (!response.ok) throw new Error('No se pudieron cargar las opciones disponibles.')
   const saved=await response.json()
   if (!Array.isArray(saved.marcas) || !Array.isArray(saved.lineas) || !Array.isArray(saved.ciudades) || saved.ciudades.length<1000) {
