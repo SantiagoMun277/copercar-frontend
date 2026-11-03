@@ -2,7 +2,34 @@ import { listarCatalogo } from './brandsLines'
 
 // Carga el catálogo de referencia de la base de datos y, cuando están disponibles,
 // lo actualiza con las marcas/líneas reales del servicio. No crea datos ni guarda cambios.
+// Reutiliza una consulta reciente para evitar descargar 1104 municipios y repetir
+// solicitudes al catálogo cada vez que se actualiza el inventario.
+// Las modificaciones de marcas/líneas invalidan esta caché.
+const VIGENCIA_MS = 45000
+let cache = null
+let cacheDesde = 0
+let pendiente = null
+
+export function invalidarCatalogoVehiculos() {
+  cache = null
+  cacheDesde = 0
+}
+
 export async function cargarCatalogoVehiculos() {
+  if (cache && Date.now() - cacheDesde < VIGENCIA_MS) return cache
+  if (pendiente) return pendiente
+  pendiente = cargarDelServidor()
+  try {
+    const datos = await pendiente
+    cache = datos
+    cacheDesde = Date.now()
+    return datos
+  } finally {
+    pendiente = null
+  }
+}
+
+async function cargarDelServidor() {
   const response=await fetch(`${import.meta.env.BASE_URL}catalogos/copercar.json`,{cache:'no-store'})
   if (!response.ok) throw new Error('No se pudieron cargar las opciones disponibles.')
   const saved=await response.json()

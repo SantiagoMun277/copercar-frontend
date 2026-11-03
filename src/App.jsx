@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { Navigate, Route, Routes, useParams } from 'react-router-dom'
 import Login from './pages/Login'
 import Vehicles from './pages/Vehicles'
@@ -5,7 +6,7 @@ import BrandsLines from './pages/BrandsLines'
 import VehicleForm from './pages/VehicleForm'
 import Movements from './pages/Movements'
 import MovementForm from './pages/MovementForm'
-import Reports from './pages/Reports'
+const Reports = lazy(() => import('./pages/Reports'))
 import Users from './pages/Users'
 import UserForm from './pages/UserForm'
 import MyData from './pages/MyData'
@@ -17,7 +18,7 @@ const UserEditRedirect = () => { const {id} = useParams(); return <Navigate to="
 const Guard = ({ roles, children }) => <ProtectedRoute roles={roles}>{children}</ProtectedRoute>
 
 export default function App(){
-  return <Routes>
+  return <Suspense fallback={<section className="page-section" role="status">Cargando sección...</section>}><Routes>
     <Route path="/login" element={<Login/>}/>
     <Route element={<Guard><AppLayout/></Guard>}>
       <Route index element={<Navigate to="/vehiculos" replace/>}/>
@@ -35,5 +36,5 @@ export default function App(){
       <Route path="/usuarios/:id/editar" element={<Guard roles={['admin']}><UserEditRedirect/></Guard>}/>
     </Route>
     <Route path="*" element={<Navigate to="/vehiculos" replace/>}/>
-  </Routes>
+  </Routes></Suspense>
 }

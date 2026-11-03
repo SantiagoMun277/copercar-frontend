@@ -30,15 +30,20 @@ const pendingPhotos = form => (form.photos || []).filter(p => typeof p === 'stri
 async function uploadNewPhotos(id, form, existingPhotos = []) {
   const pending = pendingPhotos(form)
   if (!pending.length) return
-  let sent = 0
-  for (const [index, value] of pending.entries()) {
-    try {
-      const file = await fetch(value).then(response => response.blob())
-      await subirFotoVehiculoBackend(id, file, existingPhotos.length + index, !existingPhotos.length && index === 0)
-      sent += 1
-    } catch (error) {
-      throw new Error('Los datos del vehículo se guardaron correctamente, pero no se pudieron cargar todas las fotografías. Intenta agregarlas nuevamente desde Editar vehículo.')
-    }
+  const upload = async index => {
+    const file = await fetch(pending[index]).then(response => response.blob())
+    await subirFotoVehiculoBackend(id, file, existingPhotos.length + index, !existingPhotos.length && index === 0)
+  }
+  const failedMessage = 'Los datos del vehículo se guardaron correctamente, pero no se pudieron cargar todas las fotografías. Intenta agregarlas nuevamente desde Editar vehículo.'
+  // Subir primero la foto principal para conservar el orden y el indicador principal.
+  try { await upload(0) }
+  catch { throw new Error(failedMessage) }
+  // Las restantes se suben como máximo de a dos, para reducir la espera sin
+  // saturar la API. allSettled garantiza que terminen antes de refrescar el vehículo.
+  for (let i = 1; i < pending.length; i += 2) {
+    const indices = [i, i + 1].filter(index => index < pending.length)
+    const outcomes = await Promise.allSettled(indices.map(upload))
+    if (outcomes.some(result => result.status === 'rejected')) throw new Error(failedMessage)
   }
 }
 
@@ -57,6 +62,16 @@ export function AppDataProvider({ children }) {
   useEffect(() => { if (!backendMode) localStorage.setItem(demoKey('vehicles'), JSON.stringify(vehicles)) }, [vehicles])
   useEffect(() => { if (!backendMode) localStorage.setItem(demoKey('movements'), JSON.stringify(movements)) }, [movements])
   useEffect(() => { if (!backendMode) localStorage.setItem(demoKey('users'), JSON.stringify(users)) }, [users])
+
+  // Tras eliminar exitosamente una foto, actualizar solo el vehículo afectado.
+  // No es necesario descargar todo el inventario y catálogo de nuevo.
+  const removeVehiclePhotoLocal = (vehicleId, photoId, photoUrl) => {
+    setVehicles(prev => prev.map(vehicle => Number(vehicle.id) !== Number(vehicleId) ? vehicle : {
+      ...vehicle,
+      photoRecords: (vehicle.photoRecords || []).filter(photo => Number(photo.id) !== Number(photoId)),
+      photos: (vehicle.photos || []).filter(url => url !== photoUrl),
+    }))
+  }
 
   const refreshVehicles = async () => {
     if (!backendMode) return
@@ -260,7 +275,7 @@ export function AppDataProvider({ children }) {
   const resetDemo = () => { if (!backendMode) {setVehicles(demoVehicles);setMovements(demoMovements);setUsers(demoUsers)} }
 
   const value = useMemo(() => ({
-    vehicles, loadingVehicles, vehicleError, refreshVehicles,
+    vehicles, loadingVehicles, vehicleError, refreshVehicles, removeVehiclePhotoLocal,
     movements, loadingMovements, movementError, refreshMovements,
     users, loadingUsers, usersError, refreshUsers,
     addVehicle, updateVehicle, deleteVehicle,

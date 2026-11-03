@@ -4,6 +4,7 @@ import PageTitle from '../components/PageTitle'
 import Modal from '../components/Modal'
 import { backendMode } from '../services/api'
 import * as catalogos from '../services/brandsLines'
+import { invalidarCatalogoVehiculos } from '../services/catalogoVehiculos'
 
 // El GET de Juan lista solo activos. Este registro local muestra únicamente
 // los inactivos que se desactivaron desde este navegador; nunca se presenta
@@ -108,6 +109,7 @@ export default function BrandsLines() {
     setError(''); setNotice(''); setBusy(true)
     try {
       await action()
+      invalidarCatalogoVehiculos()
       afterSuccess?.()
       await refresh()
       setNotice(success)

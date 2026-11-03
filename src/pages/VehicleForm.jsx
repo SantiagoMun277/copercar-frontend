@@ -7,6 +7,8 @@ import ThousandsInput from '../components/ThousandsInput'
 import { backendMode, apiRequest } from '../services/api'
 import { establecerCatalogoReal } from '../services/backendCatalogs'
 import { cargarCatalogoVehiculos } from '../services/catalogoVehiculos'
+import { optimizarFotoParaSubida } from '../utils/photoOptimization'
+import { miniaturaVehiculo } from '../utils/photoUrl'
 import { validateVehicle, messageForErrors, serverErrors, shouldShowServerError } from '../utils/formValidation'
 
 const empty = { cityId:null, title:'',status:'Disponible',brand:'',line:'',color:'',year:new Date().getFullYear(),plate:'',mileage:'',price:'',owners:1,engine:'',fuel:'',transmission:'',department:'',city:'',photos:[],soatNumber:'',soatExpiry:'',rtmNumber:'',rtmExpiry:'' }
@@ -17,7 +19,7 @@ const transmissions=['Automática','Mecánica']
 
 export default function VehicleForm() {
   const { id } = useParams(); const navigate = useNavigate()
-  const { vehicles, addVehicle, updateVehicle, loadingVehicles, refreshVehicles } = useAppData()
+  const { vehicles, addVehicle, updateVehicle, loadingVehicles, removeVehiclePhotoLocal } = useAppData()
   const existing = useMemo(()=>vehicles.find(v=>v.id===Number(id)),[vehicles,id])
   const [form,setForm]=useState(existing ? {...existing} : empty)
   useEffect(() => { if (existing) setForm({...existing}) }, [existing?.id])
@@ -25,6 +27,7 @@ export default function VehicleForm() {
   const [fieldErrors,setFieldErrors]=useState({})
   const [saving,setSaving]=useState(false)
   const [removingPhoto,setRemovingPhoto]=useState(null)
+  const [preparingPhotos,setPreparingPhotos]=useState(false)
   const [catalogo,setCatalogo]=useState(null)
   const [catalogError,setCatalogError]=useState('')
   useEffect(() => {
@@ -36,11 +39,12 @@ export default function VehicleForm() {
     return () => {alive = false}
   }, [])
   const editing=!!existing
-  const brandOptions = catalogo?.marcas?.slice().sort((a,b)=>a.name.localeCompare(b.name,'es')) || []
+  // Mantener estables las opciones; no rehacer 1104 ciudades al escribir cada campo.
+  const brandOptions = useMemo(() => catalogo?.marcas?.slice().sort((a,b)=>a.name.localeCompare(b.name,'es')) || [], [catalogo])
   const selectedBrand = brandOptions.find(m=>m.name === form.brand)
-  const lineOptions = catalogo?.lineas?.filter(l=>Number(l.brandId)===Number(selectedBrand?.id)).sort((a,b)=>a.name.localeCompare(b.name,'es')) || []
+  const lineOptions = useMemo(() => catalogo?.lineas?.filter(l=>Number(l.brandId)===Number(selectedBrand?.id)).sort((a,b)=>a.name.localeCompare(b.name,'es')) || [], [catalogo,selectedBrand?.id])
   const cityCatalog = catalogo?.ciudades || []
-  const cityOptions = cityCatalog.map(row=>({value:String(row.id),label:`${row.city} — ${row.department}`}))
+  const cityOptions = useMemo(() => (catalogo?.ciudades || []).map(row=>({value:String(row.id),label:`${row.city} — ${row.department}`})), [catalogo])
   const matchingCity = cityCatalog.find(row => Number(row.id) === Number(form.cityId))
   const selectCity = id => {
     const row = cityCatalog.find(entry => Number(entry.id) === Number(id))
@@ -54,7 +58,7 @@ export default function VehicleForm() {
     requestAnimationFrame(() => document.querySelector('.field[data-invalid="true"] input, .field[data-invalid="true"] select, .field[data-invalid="true"] textarea')?.focus({preventScroll:false}))
   }
   const submit=async e=>{
-    e.preventDefault();setError('');setFieldErrors({})
+    e.preventDefault();if (preparingPhotos) return;setError('');setFieldErrors({})
     const errors = validateVehicle(form, vehicles)
     if (backendMode && !catalogo) errors.brand = catalogError || 'No se pudieron cargar las opciones. Inténtalo de nuevo.'
     if (backendMode && catalogo && !matchingCity) errors.city = 'Selecciona un municipio válido.'
@@ -90,22 +94,33 @@ export default function VehicleForm() {
         setRemovingPhoto(null)
         return
       }
-      setForm(current=>({...current,photos:(current.photos||[]).filter((_,j)=>j!==i)}))
-      try {
-        await refreshVehicles()
-        setError('')
-      } catch {
-        // La eliminación ya ocurrió: no presentar un error que invite a repetirla.
-        setError('La fotografía se eliminó, pero no se pudo actualizar el inventario. Actualiza la página antes de guardar cambios.')
-      } finally { setRemovingPhoto(null) }
+      // El servidor confirmó la eliminación. Evitar una nueva descarga de todo el inventario.
+      removeVehiclePhotoLocal(existing.id, record.id, p)
+      setForm(current=>({...current,photos:(current.photos||[]).filter(url=>url!==p)}))
+      setError('')
+      setRemovingPhoto(null)
       return
     }
     change('photos',form.photos.filter((_,j)=>j!==i))
   }
   const onFiles=async e=>{
-    const files=[...e.target.files].slice(0,8)
-    const read=f=>new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(f)})
-    const data=await Promise.all(files.map(read)); change('photos',[...(form.photos||[]),...data])
+    const input = e.currentTarget
+    const files = [...(input.files || [])].slice(0,8)
+    if (!files.length || preparingPhotos || saving) return
+    setPreparingPhotos(true)
+    setError('')
+    try {
+      const data = []
+      // Una foto a la vez evita picos de memoria al procesar varias fotos grandes.
+      for (const file of files) data.push(await optimizarFotoParaSubida(file))
+      setForm(current => ({...current, photos:[...(current.photos || []), ...data]}))
+      clearError('photos')
+    } catch {
+      setError('No se pudieron preparar las fotografías. Comprueba el formato de los archivos e inténtalo nuevamente.')
+    } finally {
+      input.value = ''
+      setPreparingPhotos(false)
+    }
   }
   if(id && !existing && loadingVehicles) return null
   if(id && !existing) return <section className="page-section"><h2>Vehículo no encontrado</h2><button className="btn btn-orange" onClick={()=>navigate('/vehiculos')}>Volver al inventario</button></section>
@@ -131,11 +146,11 @@ export default function VehicleForm() {
           <label className="field" data-field-key="city" data-invalid={Boolean(fieldErrors.city)}><span>Ciudad o municipio de Matrícula*</span>{backendMode ? <SearchableSelect value={matchingCity ? String(matchingCity.id) : ''} options={cityOptions} onChange={value=>{selectCity(value);clearError('city')}} placeholder={catalogo ? 'Buscar municipio o departamento' : 'No hay municipios disponibles'} ariaLabel="Ciudad o municipio de matrícula" disabled={!catalogo}/> : <SearchableSelect value={form.city} options={citiesByDepartment[form.department]||[]} onChange={city=>{setForm(f=>({...f,city,cityId:null}));clearError('city')}} placeholder="Buscar o escribir municipio" ariaLabel="Ciudad o municipio de matrícula" allowCustom />}<small className="field-hint">{backendMode ? 'Selecciona solo la ciudad. El departamento se selecciona automáticamente.' : 'Selecciona una ciudad.'}</small>{fieldErrors.city && <small className="field-validation-message">{fieldErrors.city}</small>}</label>
 
         </div>
-        <div className="photo-section"><label className="btn btn-orange upload-label">+Agregar foto<input type="file" accept="image/*" multiple onChange={onFiles}/></label><div className="photo-grid">{(form.photos||[]).map((p,i)=><div className="photo-item" key={i}><img src={p}/><button type="button" disabled={saving || removingPhoto !== null} onClick={()=>removePhoto(p,i)}>×</button></div>)}</div></div>
+        <div className="photo-section"><label className="btn btn-orange upload-label">+Agregar foto<input type="file" accept="image/*" multiple disabled={preparingPhotos || saving} onChange={onFiles}/></label>{preparingPhotos && <small className="field-hint" role="status">Preparando fotografías...</small>}<div className="photo-grid">{(form.photos||[]).map((p,i)=><div className="photo-item" key={i}><img src={miniaturaVehiculo(p, 960)} alt={`Fotografía ${i + 1}`} loading="lazy" decoding="async" onError={e=>{if(e.currentTarget.getAttribute('src') !== p)e.currentTarget.src=p}}/><button type="button" disabled={saving || removingPhoto !== null || preparingPhotos} onClick={()=>removePhoto(p,i)}>×</button></div>)}</div></div>
         <div className="doc-section"><h3>SOAT</h3><div className="doc-grid"><label className="field date-field" data-field-key="soatExpiry" data-invalid={Boolean(fieldErrors.soatExpiry)} style={{gridColumn:'1 / -1'}}><span>Vigencia hasta</span><input type="date" value={form.soatExpiry} onChange={e=>change('soatExpiry',e.target.value)}/>{fieldErrors.soatExpiry && <small className="field-validation-message">{fieldErrors.soatExpiry}</small>}</label></div></div>
         <div className="doc-section"><h3>Revisión Tecnomecánica</h3><div className="doc-grid"><label className="field date-field" data-field-key="rtmExpiry" data-invalid={Boolean(fieldErrors.rtmExpiry)} style={{gridColumn:'1 / -1'}}><span>Vigencia hasta</span><input type="date" value={form.rtmExpiry} onChange={e=>change('rtmExpiry',e.target.value)}/>{fieldErrors.rtmExpiry && <small className="field-validation-message">{fieldErrors.rtmExpiry}</small>}</label></div></div>
         {catalogError && backendMode && <div className="form-error form-wide" role="alert">{catalogError}</div>}{error&&<div className="form-error form-wide" role="alert">{error}</div>}
-        <div className="form-actions"><button className="btn btn-orange" disabled={saving || removingPhoto !== null}>Guardar</button><button className="btn btn-orange secondary-orange" type="button" onClick={()=>navigate('/vehiculos')}>Cancelar</button></div>
+        <div className="form-actions"><button className="btn btn-orange" disabled={saving || removingPhoto !== null || preparingPhotos}>Guardar</button><button className="btn btn-orange secondary-orange" type="button" onClick={()=>navigate('/vehiculos')}>Cancelar</button></div>
       </form>
     </section>
   )
