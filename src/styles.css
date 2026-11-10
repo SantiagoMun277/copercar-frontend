@@ -229,3 +229,89 @@ a{color:inherit}
 .catalog-navigation-btn.selected{background:var(--orange);border-color:var(--orange);color:#fff}
 .catalog-navigation-btn:focus-visible{outline:3px solid #315da8;outline-offset:2px}
 @media(max-width:520px){.catalog-navigation{flex-direction:column}.catalog-navigation-btn{width:100%;text-align:center}}
+
+/* COPERCAR MEJORAS USABILIDAD 2026 -- INICIO */
+/* Desktop: conservar los iconos y el isotipo; hacer visibles sus etiquetas. */
+@media (min-width: 761px) {
+  .sidebar { width: 106px; }
+  .sidebar-logo { width: 100%; }
+  .sidebar nav { padding-top: 22px; }
+  .side-link {
+    min-height: 66px;
+    height: auto;
+    padding: 6px 2px;
+    margin: 0 5px;
+    box-sizing: border-box;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+  .side-link img { width: 28px; height: 28px; }
+  .side-link span {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.15;
+    color: #202020;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  .app-main { margin-left: 106px; width: calc(100% - 106px); }
+}
+/* Cabecera: conservar Mis datos, nombre de usuario y posición a la derecha. */
+.app-header {
+  min-height: 46px;
+  height: auto;
+  box-sizing: border-box;
+  padding: 7px 14px;
+}
+.session-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.session-actions a {
+  display: inline-flex;
+  order: 1;
+  align-items: center;
+  min-height: 32px;
+  padding: 5px 9px;
+  box-sizing: border-box;
+  font-size: 13px;
+  font-weight: 600;
+  border-radius: 6px;
+}
+.session-actions .session-name { order: 0; }
+.session-actions .link-button {
+  order: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 7px 12px;
+  border: 1px solid #a15a28;
+  border-radius: 6px;
+  background: rgba(255, 110, 6, 0.09);
+  color: #693916;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  cursor: pointer;
+}
+.session-actions .link-button:hover { background: rgba(255, 110, 6, 0.19); }
+.session-actions .link-button:focus-visible {
+  outline: 2px solid #a15a28;
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  .app-header { min-height: 44px; height: auto; padding: 6px 9px; }
+  .session-actions { gap: 5px; font-size: 12px; }
+  .session-actions a { min-height: 30px; padding: 4px 6px; font-size: 12px; }
+  .session-actions .link-button { min-height: 32px; padding: 6px 8px; font-size: 12px; }
+}
+/* COPERCAR MEJORAS USABILIDAD 2026 -- FIN */

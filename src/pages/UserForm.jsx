@@ -1,3 +1,4 @@
+import { esCorreoConEnyeValido } from '../utils/correoConEnye'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAppData } from '../context/AppDataContext'
@@ -22,7 +23,8 @@ export function UserEditor({ user = null, onSaved, onCancel }) {
   const change = (key, value) => {setForm(prev => ({ ...prev, [key]:value }));setFieldErrors(prev=>{if(!prev[key])return prev;const next={...prev};delete next[key];return next})}
   const markErrors = errors => {setFieldErrors(errors);setError(messageForErrors(errors));requestAnimationFrame(()=>document.querySelector('.user-form .field[data-invalid="true"] input, .user-form .field[data-invalid="true"] select')?.focus())}
   const submit = async event => {
-    event.preventDefault();setError('');setFieldErrors({})
+    event.preventDefault();
+    if (!esCorreoConEnyeValido(form.email.trim())) { setError('Ingrese un correo electrónico válido.'); return }setError('');setFieldErrors({})
     const errors=validateUser(form,editing,users)
     if(Object.keys(errors).length){markErrors(errors);return}
     const payload={...form,documentNumber:form.documentNumber.trim(),email:form.email.trim().toLowerCase()}
@@ -43,7 +45,7 @@ export function UserEditor({ user = null, onSaved, onCancel }) {
     <h1>{editing ? 'Editar usuario' : 'Agregar usuario'}</h1>
     <div className="user-form-grid">
       <label className="field" data-field-key="documentType" data-invalid={Boolean(fieldErrors.documentType)}><span>Tipo de documento *</span><select value={form.documentType} onChange={e=>change('documentType', e.target.value)}><option>Cédula</option><option>Pasaporte</option><option>Cédula de extranjería</option><option>NIT</option></select>{fieldErrors.documentType && <small className="field-validation-message">{fieldErrors.documentType}</small>}</label>
-      <label className="field" data-field-key="email" data-invalid={Boolean(fieldErrors.email)}><span>Correo electrónico *</span><input type="email" value={form.email} onChange={e=>change('email', e.target.value)} />{fieldErrors.email && <small className="field-validation-message">{fieldErrors.email}</small>}</label>
+      <label className="field" data-field-key="email" data-invalid={Boolean(fieldErrors.email)}><span>Correo electrónico *</span><input type="text" inputMode="email" autoComplete="email" value={form.email} onChange={e=>change('email', e.target.value)} />{fieldErrors.email && <small className="field-validation-message">{fieldErrors.email}</small>}</label>
       <label className="field" data-field-key="documentNumber" data-invalid={Boolean(fieldErrors.documentNumber)}><span>Número de documento *</span><input type="text" inputMode="numeric" pattern="[0-9]*" value={form.documentNumber} onChange={e=>change('documentNumber', soloDigitos(e.target.value))} />{fieldErrors.documentNumber && <small className="field-validation-message">{fieldErrors.documentNumber}</small>}</label>
       <label className="field" data-field-key="phone" data-invalid={Boolean(fieldErrors.phone)}><span>Número de celular *</span><input type="text" inputMode="numeric" pattern="[0-9]*" value={form.phone} onChange={e=>change('phone', soloDigitos(e.target.value))} />{fieldErrors.phone && <small className="field-validation-message">{fieldErrors.phone}</small>}</label>
       <label className="field" data-field-key="firstName" data-invalid={Boolean(fieldErrors.firstName)}><span>Primer nombre *</span><input value={form.firstName} onChange={e=>change('firstName', soloLetras(e.target.value))} />{fieldErrors.firstName && <small className="field-validation-message">{fieldErrors.firstName}</small>}</label>

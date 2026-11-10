@@ -1,3 +1,4 @@
+import { esCorreoConEnyeValido } from '../utils/correoConEnye'
 import { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -14,7 +15,8 @@ export default function Login() {
   if (checkingSession) return null
   if (currentUser) return <Navigate to="/vehiculos" replace />
   const submit = async e => {
-    e.preventDefault(); setError('')
+    e.preventDefault();
+    if (!esCorreoConEnyeValido(email.trim())) { setError('Ingrese un correo electrónico válido.'); return } setError('')
     setSubmitting(true)
     try {
       const result = await login(email, password)
@@ -29,7 +31,7 @@ export default function Login() {
       <div className="login-center">
         <form className="login-card" onSubmit={submit}>
           <div className="login-hero"><img src={`${import.meta.env.BASE_URL}assets/ui/isotipo.png`} alt="COPERCAR" /></div>
-          <input value={email} onChange={e=>setEmail(e.target.value)} type="email" placeholder="Digite el correo electrónico" aria-label="Correo electrónico" required />
+          <input value={email} onChange={e=>setEmail(e.target.value)} type="text" inputMode="email" autoComplete="email" placeholder="Digite el correo electrónico" aria-label="Correo electrónico" required />
           <PasswordField value={password} onChange={e=>setPassword(e.target.value)} placeholder="Digite la contraseña" required autoComplete="current-password" />
           {error && <div className="form-error">{error}</div>}
           <button className="btn btn-orange login-button" disabled={submitting}>Iniciar</button>

@@ -13,7 +13,7 @@ export default function AppLayout() {
           <div className="session-actions">
             {currentUser.role === 'admin' && <Link to="/mis-datos">Mis datos</Link>}
             <span className="session-name">{currentUser.firstName} {currentUser.lastName}</span>
-            <button className="link-button" onClick={logout}>Salir</button>
+            <button className="link-button" onClick={logout}>Cerrar sesión</button>
           </div>
         </header>
         <Outlet />
