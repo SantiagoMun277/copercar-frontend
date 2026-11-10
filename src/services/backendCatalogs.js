@@ -36,6 +36,10 @@ export function fromBackendVehicle(v) {
   const department = normalizarCatalogo(v.ciudad?.departamento?.nombre) === 'caqueta' ? 'CAQUETÁ' : (v.ciudad?.departamento?.nombre?.toUpperCase() || '')
   return {
     id: v.id_vehiculo, title: v.titulo || '', status:v.estado?.nombre || '',
+    // Fecha de ingreso = creación del registro del vehículo, NO fecha de COMPRA.
+    fechaRegistro: v.fecha_registro ?? null,
+    // Campo opcional para cuando FastAPI exponga la fecha/hora de venta vigente.
+    fechaVenta: v.fecha_hora_venta ?? v.fecha_venta ?? v.fechaVenta ?? null,
     brand, line:v.linea?.nombre || '', color:v.color || '',
     year:v.modelo, plate:v.placa, mileage:v.kilometraje,
     price:Number(v.precio), owners:v.cantidad_duenos, engine:v.cilindraje == null ? '' : String(v.cilindraje),

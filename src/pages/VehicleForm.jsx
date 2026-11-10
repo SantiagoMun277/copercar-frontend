@@ -10,6 +10,7 @@ import { cargarCatalogoVehiculos } from '../services/catalogoVehiculos'
 import { optimizarFotoParaSubida } from '../utils/photoOptimization'
 import { miniaturaVehiculo } from '../utils/photoUrl'
 import { validateVehicle, messageForErrors, serverErrors, shouldShowServerError } from '../utils/formValidation'
+import { obtenerFechasVentaActivas, fechaIngresoParaMostrar, fechaVentaParaMostrar } from '../utils/fechasInventario'
 
 const empty = { cityId:null, title:'',status:'Disponible',brand:'',line:'',color:'',year:new Date().getFullYear(),plate:'',mileage:'',price:'',owners:1,engine:'',fuel:'',transmission:'',department:'',city:'',photos:[],soatNumber:'',soatExpiry:'',rtmNumber:'',rtmExpiry:'' }
 import { brands, linesByBrand, citiesByDepartment, departments } from '../data/catalogs'
@@ -19,8 +20,9 @@ const transmissions=['Automática','Mecánica']
 
 export default function VehicleForm() {
   const { id } = useParams(); const navigate = useNavigate()
-  const { vehicles, addVehicle, updateVehicle, loadingVehicles, removeVehiclePhotoLocal } = useAppData()
+  const { vehicles, movements, addVehicle, updateVehicle, loadingVehicles, loadingMovements, removeVehiclePhotoLocal } = useAppData()
   const existing = useMemo(()=>vehicles.find(v=>v.id===Number(id)),[vehicles,id])
+  const fechasVentaPorVehiculo = useMemo(() => obtenerFechasVentaActivas(movements), [movements])
   const [form,setForm]=useState(existing ? {...existing} : empty)
   useEffect(() => { if (existing) setForm({...existing}) }, [existing?.id])
   const [error,setError]=useState('')
@@ -146,6 +148,19 @@ export default function VehicleForm() {
           <label className="field" data-field-key="city" data-invalid={Boolean(fieldErrors.city)}><span>Ciudad o municipio de Matrícula*</span>{backendMode ? <SearchableSelect value={matchingCity ? String(matchingCity.id) : ''} options={cityOptions} onChange={value=>{selectCity(value);clearError('city')}} placeholder={catalogo ? 'Buscar municipio o departamento' : 'No hay municipios disponibles'} ariaLabel="Ciudad o municipio de matrícula" disabled={!catalogo}/> : <SearchableSelect value={form.city} options={citiesByDepartment[form.department]||[]} onChange={city=>{setForm(f=>({...f,city,cityId:null}));clearError('city')}} placeholder="Buscar o escribir municipio" ariaLabel="Ciudad o municipio de matrícula" allowCustom />}<small className="field-hint">{backendMode ? 'Selecciona solo la ciudad. El departamento se selecciona automáticamente.' : 'Selecciona una ciudad.'}</small>{fieldErrors.city && <small className="field-validation-message">{fieldErrors.city}</small>}</label>
 
         </div>
+        {editing && <section className="vehicle-dates-edit" aria-label="Información de fechas del vehículo">
+          <div className="vehicle-dates-edit-title">Información del registro <span>(solo consulta)</span></div>
+          <div className="vehicle-dates-edit-items">
+            <div className="vehicle-dates-edit-item">
+              <span className="vehicle-dates-edit-label">Ingreso al inventario</span>
+              <span className="vehicle-dates-edit-value">{fechaIngresoParaMostrar(existing)}</span>
+            </div>
+            <div className="vehicle-dates-edit-item">
+              <span className="vehicle-dates-edit-label">Venta del vehículo</span>
+              <span className="vehicle-dates-edit-value">{fechaVentaParaMostrar(existing, fechasVentaPorVehiculo, {consultando: loadingMovements})}</span>
+            </div>
+          </div>
+        </section>}
         <div className="photo-section"><label className="btn btn-orange upload-label">+Agregar foto<input type="file" accept="image/*" multiple disabled={preparingPhotos || saving} onChange={onFiles}/></label>{preparingPhotos && <small className="field-hint" role="status">Preparando fotografías...</small>}<div className="photo-grid">{(form.photos||[]).map((p,i)=><div className="photo-item" key={i}><img src={miniaturaVehiculo(p, 960)} alt={`Fotografía ${i + 1}`} loading="lazy" decoding="async" onError={e=>{if(e.currentTarget.getAttribute('src') !== p)e.currentTarget.src=p}}/><button type="button" disabled={saving || removingPhoto !== null || preparingPhotos} onClick={()=>removePhoto(p,i)}>×</button></div>)}</div></div>
         <div className="doc-section"><h3>SOAT</h3><div className="doc-grid"><label className="field date-field" data-field-key="soatExpiry" data-invalid={Boolean(fieldErrors.soatExpiry)} style={{gridColumn:'1 / -1'}}><span>Vigencia hasta</span><input type="date" value={form.soatExpiry} onChange={e=>change('soatExpiry',e.target.value)}/>{fieldErrors.soatExpiry && <small className="field-validation-message">{fieldErrors.soatExpiry}</small>}</label></div></div>
         <div className="doc-section"><h3>Revisión Tecnomecánica</h3><div className="doc-grid"><label className="field date-field" data-field-key="rtmExpiry" data-invalid={Boolean(fieldErrors.rtmExpiry)} style={{gridColumn:'1 / -1'}}><span>Vigencia hasta</span><input type="date" value={form.rtmExpiry} onChange={e=>change('rtmExpiry',e.target.value)}/>{fieldErrors.rtmExpiry && <small className="field-validation-message">{fieldErrors.rtmExpiry}</small>}</label></div></div>

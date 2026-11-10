@@ -315,3 +315,50 @@ a{color:inherit}
   .session-actions .link-button { min-height: 32px; padding: 6px 8px; font-size: 12px; }
 }
 /* COPERCAR MEJORAS USABILIDAD 2026 -- FIN */
+
+/* COPERCAR FECHAS INVENTARIO 2026: banda informativa compacta, solo lectura. */
+.vehicle-dates {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px 14px;
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid #eee7e0;
+  color: #615d58;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.vehicle-date { display: inline-flex; align-items: baseline; flex-wrap: wrap; gap: 4px; }
+.vehicle-date-label { color: #7c562f; font-weight: 650; }
+@media (max-width: 760px) {
+  .vehicle-dates { font-size: 10px; gap: 3px 9px; margin-top: 5px; }
+}
+/* FIN COPERCAR FECHAS INVENTARIO 2026 */
+
+/* COPERCAR FECHAS EN EDITAR VEHÍCULO: solo lectura y sin alterar el formulario. */
+.vehicle-dates-edit {
+  margin: 8px 6px 2px;
+  padding: 9px 12px;
+  border: 1px solid #e9d6c2;
+  border-radius: 6px;
+  background: #fffaf6;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.vehicle-dates-edit-title {
+  color: #624a36;
+  font-weight: 700;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.vehicle-dates-edit-title span { font-weight: 400; color: #766e68; font-size: 10px; }
+.vehicle-dates-edit-items { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px 18px; }
+.vehicle-dates-edit-item { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.vehicle-dates-edit-label { font-size: 10px; color: #7b5c42; }
+.vehicle-dates-edit-value { color: #37302b; font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+@media(max-width: 550px) {
+  .vehicle-dates-edit { margin: 8px 4px 2px; padding: 9px 10px; }
+  .vehicle-dates-edit-items { grid-template-columns: 1fr; gap: 8px; }
+}
+/* FIN COPERCAR FECHAS EDITAR VEHÍCULO. */

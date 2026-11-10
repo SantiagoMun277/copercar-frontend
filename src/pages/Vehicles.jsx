@@ -9,9 +9,10 @@ import { formatCOP } from '../utils/format'
 import { backendMode } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import { miniaturaVehiculo } from '../utils/photoUrl'
+import { obtenerFechasVentaActivas, fechaIngresoParaMostrar, fechaVentaParaMostrar } from '../utils/fechasInventario'
 
 export default function Vehicles() {
-  const { vehicles, movements, deleteVehicle, loadingVehicles, vehicleError } = useAppData()
+  const { vehicles, movements, deleteVehicle, loadingVehicles, vehicleError, loadingMovements } = useAppData()
   const navigate = useNavigate()
   const { currentUser } = useAuth()
   const [query, setQuery] = useState('')
@@ -29,6 +30,8 @@ export default function Vehicles() {
     } catch (e) { setDeleteError(e.message || 'No se pudo eliminar el vehículo.') }
     finally { setDeleting(false) }
   }
+  // Reutiliza los movimientos ya consultados por el administrador; NO hace peticiones adicionales.
+  const fechasVentaPorVehiculo = useMemo(() => obtenerFechasVentaActivas(movements), [movements])
   const filtered = useMemo(() => vehicles.filter(v => {
     const q = query.trim().toLowerCase()
     const matchesText = !q || v.plate.toLowerCase().includes(q) || v.title.toLowerCase().includes(q)
@@ -58,6 +61,10 @@ export default function Vehicles() {
               <strong>{v.title}</strong>
               <span>Modelo {v.year}</span><span>{v.transmission}</span><span>{Number(v.mileage).toLocaleString('es-CO')} km</span>
               <span>Placa: {v.plate}</span><span>Precio {formatCOP(v.price)}</span>
+              <div className="vehicle-dates" aria-label="Fechas del inventario">
+                <span className="vehicle-date"><span className="vehicle-date-label">Ingreso:</span> {fechaIngresoParaMostrar(v)}</span>
+                <span className="vehicle-date"><span className="vehicle-date-label">Venta:</span> {fechaVentaParaMostrar(v, fechasVentaPorVehiculo, {consultando: loadingMovements && currentUser?.role === 'admin'})}</span>
+              </div>
             </div>
             <div className="vehicle-actions"><StatusBadge status={v.status}/><EditAction label="" onClick={()=>navigate(`/vehiculos/${v.id}/editar`)}/><DeleteAction label="" onClick={()=>{setDeleteError('');setToDelete(v)}}/></div>
           </article>
