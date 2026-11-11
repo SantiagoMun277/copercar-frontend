@@ -227,7 +227,7 @@ export function AppDataProvider({ children }) {
       finally { await Promise.allSettled([refreshVehicles(), refreshMovements()]) }
       return fromBackendVehicle(saved)
     }
-    const aviso = validarCambioEstado({anterior:previous,siguiente:v,movimientos})
+    const aviso = validarCambioEstado({anterior:previous,siguiente:v,movimientos:movements})
     if (aviso) throw new Error(aviso)
     if (estaVendido(previous) && estaDisponible(v)) {
       setMovements(prev => prev.map(m => Number(m.vehicleId) === Number(v.id) && m.type === 'Venta' && !m.deleted ? {...m,deleted:true} : m))
@@ -251,7 +251,7 @@ export function AppDataProvider({ children }) {
       await actualizarListasFinancieras()
       return saved
     }
-    const aviso = validarMovimiento({ movimiento:m, vehiculos:vehicles, movimientos })
+    const aviso = validarMovimiento({ movimiento:m, vehiculos:vehicles, movimientos: movements })
     if (aviso) throw new Error(aviso)
     setMovements(prev => [...prev, {...m,deleted:false,id:Math.max(0,...prev.map(x=>x.id))+1}])
     return m
@@ -265,7 +265,7 @@ export function AppDataProvider({ children }) {
       await actualizarListasFinancieras()
       return saved
     }
-    const aviso = validarMovimiento({ movimiento:m, vehiculos:vehicles, movimientos, original })
+    const aviso = validarMovimiento({ movimiento:m, vehiculos:vehicles, movimientos: movements, original })
     if (aviso) throw new Error(aviso)
     setMovements(prev => prev.map(x => x.id === m.id ? m : x))
     return m
@@ -283,7 +283,7 @@ export function AppDataProvider({ children }) {
     }
     const actual = movements.find(m => Number(m.id) === Number(id))
     const vehiculo = vehicles.find(v => Number(v.id) === Number(actual?.vehicleId))
-    const aviso = validarEliminacionMovimiento({ movimiento:actual,movimientos,vehiculo })
+    const aviso = validarEliminacionMovimiento({ movimiento:actual,movimientos:movements,vehiculo })
     if (aviso) throw new Error(aviso)
     setMovements(prev => prev.map(x => Number(x.id) === Number(id) ? {...x,deleted:true} : x))
     return true

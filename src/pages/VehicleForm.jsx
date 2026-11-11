@@ -48,7 +48,7 @@ export default function VehicleForm() {
   // incompletos para bloquear sus ediciones normales del inventario.
   const avisoEstado = editing && String(form.status).trim().toLowerCase() !== String(existing.status).trim().toLowerCase()
     && (!backendMode || (currentUser?.role === 'admin' && !loadingMovements && !movementError))
-    ? validarCambioEstado({anterior:existing,siguiente:form,movimientos}) : null
+    ? validarCambioEstado({anterior:existing,siguiente:form,movimientos:movements}) : null
   // Mantener estables las opciones; no rehacer 1104 ciudades al escribir cada campo.
   const brandOptions = useMemo(() => catalogo?.marcas?.slice().sort((a,b)=>a.name.localeCompare(b.name,'es')) || [], [catalogo])
   const selectedBrand = brandOptions.find(m=>m.name === form.brand)

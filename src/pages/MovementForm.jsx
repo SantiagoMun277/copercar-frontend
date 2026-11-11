@@ -20,7 +20,7 @@ export default function MovementForm(){
  const change=(k,v)=>{setForm(f=>({...f,[k]:v}));setFieldErrors(prev=>{if(!prev[k])return prev;const next={...prev};delete next[k];return next})};
  const markErrors = errors => {setFieldErrors(errors);setError(messageForErrors(errors));requestAnimationFrame(()=>document.querySelector('.movement-form .field[data-invalid="true"] input, .movement-form .field[data-invalid="true"] select')?.focus())};
  const avisoReglas = form.vehicleId && (!backendMode || (!loadingMovements && !movementError))
-  ? validarMovimiento({ movimiento:form,vehiculos:vehicles,movimientos,original:existing || null }) : null
+  ? validarMovimiento({ movimiento:form,vehiculos:vehicles,movimientos:movements,original:existing || null }) : null
  const submit=async e=>{
   e.preventDefault();setError('');setFieldErrors({})
   const errors=validateMovement(form,vehicles,editing,existing,backendMode)
