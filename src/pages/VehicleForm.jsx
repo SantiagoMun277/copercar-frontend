@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useAppData } from '../context/AppDataContext'
+import { useAuth } from '../context/AuthContext'
 import PageTitle from '../components/PageTitle'
 import SearchableSelect from '../components/SearchableSelect'
 import ThousandsInput from '../components/ThousandsInput'
@@ -11,6 +12,7 @@ import { optimizarFotoParaSubida } from '../utils/photoOptimization'
 import { miniaturaVehiculo } from '../utils/photoUrl'
 import { validateVehicle, messageForErrors, serverErrors, shouldShowServerError } from '../utils/formValidation'
 import { obtenerFechasVentaActivas, fechaIngresoParaMostrar, fechaVentaParaMostrar } from '../utils/fechasInventario'
+import { estaVendido, estaDisponible, ventasActivas, validarCambioEstado } from '../utils/reglasVentaFrontend'
 
 const empty = { cityId:null, title:'',status:'Disponible',brand:'',line:'',color:'',year:new Date().getFullYear(),plate:'',mileage:'',price:'',owners:1,engine:'',fuel:'',transmission:'',department:'',city:'',photos:[],soatNumber:'',soatExpiry:'',rtmNumber:'',rtmExpiry:'' }
 import { brands, linesByBrand, citiesByDepartment, departments } from '../data/catalogs'
@@ -20,7 +22,8 @@ const transmissions=['Automática','Mecánica']
 
 export default function VehicleForm() {
   const { id } = useParams(); const navigate = useNavigate()
-  const { vehicles, movements, addVehicle, updateVehicle, loadingVehicles, loadingMovements, removeVehiclePhotoLocal } = useAppData()
+  const { currentUser } = useAuth()
+  const { vehicles, movements, addVehicle, updateVehicle, loadingVehicles, loadingMovements, movementError, removeVehiclePhotoLocal } = useAppData()
   const existing = useMemo(()=>vehicles.find(v=>v.id===Number(id)),[vehicles,id])
   const fechasVentaPorVehiculo = useMemo(() => obtenerFechasVentaActivas(movements), [movements])
   const [form,setForm]=useState(existing ? {...existing} : empty)
@@ -41,6 +44,11 @@ export default function VehicleForm() {
     return () => {alive = false}
   }, [])
   const editing=!!existing
+  // Los asesores no pueden consultar compras ni ventas: no se usan datos financieros
+  // incompletos para bloquear sus ediciones normales del inventario.
+  const avisoEstado = editing && String(form.status).trim().toLowerCase() !== String(existing.status).trim().toLowerCase()
+    && (!backendMode || (currentUser?.role === 'admin' && !loadingMovements && !movementError))
+    ? validarCambioEstado({anterior:existing,siguiente:form,movimientos}) : null
   // Mantener estables las opciones; no rehacer 1104 ciudades al escribir cada campo.
   const brandOptions = useMemo(() => catalogo?.marcas?.slice().sort((a,b)=>a.name.localeCompare(b.name,'es')) || [], [catalogo])
   const selectedBrand = brandOptions.find(m=>m.name === form.brand)
@@ -67,6 +75,14 @@ export default function VehicleForm() {
     if (backendMode && catalogo && !lineOptions.some(l=>l.name === form.line)) errors.line = 'Selecciona una línea existente para la marca elegida.'
     if (Object.keys(errors).length) {markErrors(errors);return}
     const payload = {...form,plate:form.plate.trim().toUpperCase(),price:Number(form.price),mileage:Number(form.mileage),owners:Number(form.owners)}
+    const cambio = editing && String(existing.status).toLowerCase() !== String(payload.status).toLowerCase()
+    if (cambio && estaVendido(existing) && estaDisponible(payload)) {
+      const ventas = ventasActivas(movements, existing.id)
+      const mensaje = ventas.length
+        ? `¿Confirmas que este vehículo vuelve a Disponible? Se anularán ${ventas.length} venta(s) activa(s) y dejarán de contabilizarse en los reportes.`
+        : '¿Confirmas que este vehículo vuelve a Disponible? Se verificará en el servidor si existen ventas que deban anularse.'
+      if (!window.confirm(mensaje)) return
+    }
     setSaving(true)
     try {
       if (editing) await updateVehicle(payload)
@@ -164,6 +180,7 @@ export default function VehicleForm() {
         <div className="photo-section"><label className="btn btn-orange upload-label">+Agregar foto<input type="file" accept="image/*" multiple disabled={preparingPhotos || saving} onChange={onFiles}/></label>{preparingPhotos && <small className="field-hint" role="status">Preparando fotografías...</small>}<div className="photo-grid">{(form.photos||[]).map((p,i)=><div className="photo-item" key={i}><img src={miniaturaVehiculo(p, 960)} alt={`Fotografía ${i + 1}`} loading="lazy" decoding="async" onError={e=>{if(e.currentTarget.getAttribute('src') !== p)e.currentTarget.src=p}}/><button type="button" disabled={saving || removingPhoto !== null || preparingPhotos} onClick={()=>removePhoto(p,i)}>×</button></div>)}</div></div>
         <div className="doc-section"><h3>SOAT</h3><div className="doc-grid"><label className="field date-field" data-field-key="soatExpiry" data-invalid={Boolean(fieldErrors.soatExpiry)} style={{gridColumn:'1 / -1'}}><span>Vigencia hasta</span><input type="date" value={form.soatExpiry} onChange={e=>change('soatExpiry',e.target.value)}/>{fieldErrors.soatExpiry && <small className="field-validation-message">{fieldErrors.soatExpiry}</small>}</label></div></div>
         <div className="doc-section"><h3>Revisión Tecnomecánica</h3><div className="doc-grid"><label className="field date-field" data-field-key="rtmExpiry" data-invalid={Boolean(fieldErrors.rtmExpiry)} style={{gridColumn:'1 / -1'}}><span>Vigencia hasta</span><input type="date" value={form.rtmExpiry} onChange={e=>change('rtmExpiry',e.target.value)}/>{fieldErrors.rtmExpiry && <small className="field-validation-message">{fieldErrors.rtmExpiry}</small>}</label></div></div>
+        {avisoEstado && <div className="form-error form-wide" role="status">{avisoEstado}</div>}
         {catalogError && backendMode && <div className="form-error form-wide" role="alert">{catalogError}</div>}{error&&<div className="form-error form-wide" role="alert">{error}</div>}
         <div className="form-actions"><button className="btn btn-orange" disabled={saving || removingPhoto !== null || preparingPhotos}>Guardar</button><button className="btn btn-orange secondary-orange" type="button" onClick={()=>navigate('/vehiculos')}>Cancelar</button></div>
       </form>

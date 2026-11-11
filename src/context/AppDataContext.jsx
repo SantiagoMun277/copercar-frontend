@@ -11,6 +11,8 @@ import {
 } from '../services/backend'
 import { fromBackendVehicle, toBackendVehicle, establecerCatalogoReal } from '../services/backendCatalogs'
 import { cargarCatalogoVehiculos } from '../services/catalogoVehiculos'
+import { validarMovimiento, validarCambioEstado, validarEliminacionMovimiento, ventasActivas, estaVendido, estaDisponible } from '../utils/reglasVentaFrontend'
+import { anularVentasYGuardarVehiculo } from '../utils/coordinadorAnulacionVenta'
 
 async function obtenerInventarioActual() {
   const [catalogo, inventario] = await Promise.allSettled([cargarCatalogoVehiculos(), listarVehiculosBackend()])
@@ -147,16 +149,88 @@ export function AppDataProvider({ children }) {
     setVehicles(prev => [...prev, { ...v, id:Math.max(0,...prev.map(x=>x.id))+1 }])
     return v
   }
+  // Consultas frescas: nunca aprobar una operación financiera con el estado
+  // posiblemente desactualizado que quedó en memoria al abrir una página.
+  const consultarReglasActuales = async () => {
+    if (!backendMode) return { vehiculos: vehicles, movimientos: movements }
+    if (currentUser?.role !== 'admin') {
+      throw new Error('Se requieren permisos de administrador para comprobar las compras y ventas activas. No se realizó el cambio.')
+    }
+    const [listaVehiculos, listaMovimientos] = await Promise.all([
+      listarVehiculosBackend(), listarMovimientosBackend(),
+    ])
+    return { vehiculos: listaVehiculos.filter(v => v.activo).map(fromBackendVehicle), movimientos: listaMovimientos }
+  }
+  const comprobarMovimiento = async (m, original = null) => {
+    const datos = await consultarReglasActuales()
+    // Si el movimiento original fue anulado por otro usuario, no permitir recrearlo vía PUT.
+    if (original && backendMode) {
+      const actual = datos.movimientos.find(x => Number(x.id) === Number(original.id))
+      if (!actual || actual.deleted) throw new Error('El movimiento ya no está activo. Actualiza el listado.')
+      original = actual
+    }
+    const aviso = validarMovimiento({ movimiento:m, vehiculos:datos.vehiculos, movimientos:datos.movimientos, original })
+    if (aviso) throw new Error(aviso)
+    return datos
+  }
   const updateVehicle = async v => {
+    const previous = vehicles.find(x => Number(x.id) === Number(v.id))
+    if (!previous) throw new Error('Vehículo no encontrado en el inventario actual.')
     if (backendMode) {
-      const previous = vehicles.find(x => x.id === v.id)
-      if (!previous) throw new Error('Vehículo no encontrado en el inventario actual.')
       const removed = (previous.photos || []).filter(p => !(v.photos || []).includes(p))
       if (removed.length) throw new Error('Para eliminar una fotografía guardada utiliza la opción Quitar que aparece debajo de la imagen.')
-      const saved = await actualizarVehiculoBackend(v.id, toBackendVehicle(v, previous))
+      // Validar el formulario completo ANTES de anular cualquier venta.
+      const payload = toBackendVehicle(v, previous)
+      const cambioEstado = String(previous.status).trim().toLowerCase() !== String(v.status).trim().toLowerCase()
+      let ventasPorAnular = []
+      if (cambioEstado) {
+        // Revisar primero el estado real, no el que quedó en el formulario.
+        // El inventario es consultable tanto por administradores como asesores.
+        const listaActual = await listarVehiculosBackend()
+        const vigente = listaActual.filter(x => x.activo).map(fromBackendVehicle)
+          .find(x => Number(x.id) === Number(v.id))
+        if (!vigente || String(vigente.status).trim().toLowerCase() !== String(previous.status).trim().toLowerCase()) {
+          throw new Error('El estado del vehículo cambió desde que abriste el formulario. Actualiza el inventario antes de guardar.')
+        }
+        if (currentUser?.role !== 'admin') {
+          // Los asesores no pueden consultar ni anular movimientos en FastAPI.
+          // Evitar que un cambio a Disponible deje una VENTA activa contabilizada.
+          // Las ediciones comunes y el paso a Vendido siguen funcionando.
+          if (estaVendido(vigente)) {
+            throw new Error('Para cambiar el estado de un vehículo Vendido debe intervenir un administrador, ya que es necesario verificar y, si corresponde, anular su VENTA activa. No se modificó el vehículo.')
+          }
+        } else {
+          const movimientosActuales = await listarMovimientosBackend()
+          const aviso = validarCambioEstado({anterior:vigente,siguiente:v,movimientos:movimientosActuales})
+          if (aviso) throw new Error(aviso)
+          if (estaVendido(vigente) && estaDisponible(v)) ventasPorAnular = ventasActivas(movimientosActuales, v.id)
+        }
+      }
+      const requiereAnulacion = cambioEstado && estaVendido(previous) && estaDisponible(v)
+      const saved = requiereAnulacion
+        ? await anularVentasYGuardarVehiculo({
+            ventas:ventasPorAnular,
+            anularVenta:id => eliminarMovimientoBackend(id),
+            guardarVehiculo:() => actualizarVehiculoBackend(v.id, payload),
+            // Verificación independiente de lo que esté en memoria del navegador.
+            verificar:async () => {
+              const [lista, movs] = await Promise.all([listarVehiculosBackend(), listarMovimientosBackend()])
+              const vigente = lista.filter(x=>x.activo).map(fromBackendVehicle).find(x => Number(x.id) === Number(v.id))
+              if (!vigente || !estaDisponible(vigente) || ventasActivas(movs,v.id).length) {
+                throw new Error('La API todavía no confirma el estado Disponible sin ventas activas.')
+              }
+            },
+            refrescar:() => Promise.allSettled([refreshVehicles(),refreshMovements()]),
+          })
+        : await actualizarVehiculoBackend(v.id, payload)
       try { await uploadNewPhotos(v.id, v, previous.photos || []) }
-      finally { await refreshVehicles() }
+      finally { await Promise.allSettled([refreshVehicles(), refreshMovements()]) }
       return fromBackendVehicle(saved)
+    }
+    const aviso = validarCambioEstado({anterior:previous,siguiente:v,movimientos})
+    if (aviso) throw new Error(aviso)
+    if (estaVendido(previous) && estaDisponible(v)) {
+      setMovements(prev => prev.map(m => Number(m.vehicleId) === Number(v.id) && m.type === 'Venta' && !m.deleted ? {...m,deleted:true} : m))
     }
     setVehicles(prev => prev.map(x => x.id === v.id ? v : x))
     return v
@@ -167,86 +241,52 @@ export function AppDataProvider({ children }) {
     setVehicles(prev => prev.filter(x => x.id !== id)); return true
   }
 
-  const syncSales = all => {
-    if (backendMode) return
-    setVehicles(prev => prev.map(v => {
-      const sale = all.some(m => !m.deleted && m.vehicleId === v.id && m.type === 'Venta')
-      if (sale) return {...v,status:'Vendido',demoPreviousStatus:v.demoPreviousStatus || (v.status==='Vendido'?'Disponible':v.status)}
-      if (v.demoPreviousStatus) { const {demoPreviousStatus,...rest}=v;return {...rest,status:demoPreviousStatus} }
-      return v
-    }))
-  }
-  // El backend de Juan admite actualizar solamente id_estado; 4 = Vendido.
-  // Se aplica SOLO al guardar un movimiento de VENTA, nunca al crear un vehículo.
-  const actualizarEstadoPorVenta = async vehicleId => {
-    const id = Number(vehicleId)
-    if (!Number.isInteger(id) || id <= 0) throw new Error('No se identificó el vehículo de la venta.')
-    const vehiculo = vehicles.find(v => Number(v.id) === id)
-    if (String(vehiculo?.status || '').trim().toLowerCase() === 'vendido') return
-    await actualizarVehiculoBackend(id, { id_estado: 4 })
-  }
-  const actualizarListasTrasVenta = async () => {
-    // Recuperar ambos listados aunque alguno de los dos falle al recargarse.
+  const actualizarListasFinancieras = async () => {
     await Promise.allSettled([refreshVehicles(), refreshMovements()])
   }
   const addMovement = async m => {
     if (backendMode) {
+      await comprobarMovimiento(m)
       const saved = await crearMovimientoBackend(m)
-      if (m.type === 'Venta') {
-        try {
-          await actualizarEstadoPorVenta(m.vehicleId)
-        } catch (error) {
-          // Compensación: no dejar una VENTA activa si falla el cambio de estado.
-          // DELETE /movimientos/eliminar desactiva el movimiento en MySQL.
-          let anulada = false
-          if (saved?.id_movimiento) {
-            try { await eliminarMovimientoBackend(saved.id_movimiento); anulada = true }
-            catch { /* no ocultar que la operación quedó parcialmente guardada */ }
-          }
-          await actualizarListasTrasVenta()
-          throw new Error(anulada
-            ? 'No se completó la venta porque no se pudo cambiar el vehículo a Vendido. El movimiento se desactivó. Revisa el inventario antes de intentarlo nuevamente.'
-            : 'ATENCIÓN: la VENTA quedó registrada, pero no se confirmó el cambio del vehículo a Vendido. No registres otra venta; revisa el inventario y comunica este caso al administrador.')
-        }
-        await actualizarListasTrasVenta()
-      } else {
-        await refreshMovements()
-      }
+      await actualizarListasFinancieras()
       return saved
     }
-    const next=[...movements,{...m,deleted:false,id:Math.max(0,...movements.map(x=>x.id))+1}]
-    setMovements(next);syncSales(next);return m
+    const aviso = validarMovimiento({ movimiento:m, vehiculos:vehicles, movimientos })
+    if (aviso) throw new Error(aviso)
+    setMovements(prev => [...prev, {...m,deleted:false,id:Math.max(0,...prev.map(x=>x.id))+1}])
+    return m
   }
   const updateMovement = async m => {
+    const original = movements.find(x => Number(x.id) === Number(m.id))
+    if (!original) throw new Error('No se encontró el movimiento. Actualiza el listado.')
     if (backendMode) {
-      const original = movements.find(x => Number(x.id) === Number(m.id))
+      await comprobarMovimiento(m, original)
       const saved = await actualizarMovimientoBackend(m.id, m)
-      if (m.type === 'Venta') {
-        try {
-          await actualizarEstadoPorVenta(m.vehicleId)
-        } catch (error) {
-          // Si el movimiento cambió de otro tipo a VENTA, intentar restaurarlo.
-          let restaurado = false
-          if (original && original.type !== 'Venta') {
-            try { await actualizarMovimientoBackend(m.id, original); restaurado = true }
-            catch { /* informar del posible guardado parcial */ }
-          }
-          await actualizarListasTrasVenta()
-          throw new Error(restaurado
-            ? 'No se completó el cambio a VENTA porque no se pudo actualizar el estado del vehículo. Se recuperó el tipo anterior del movimiento.'
-            : 'El movimiento se guardó, pero no se confirmó que el vehículo esté Vendido. No repitas el cambio; revisa ambos registros con el administrador.')
-        }
-        await actualizarListasTrasVenta()
-      } else {
-        await refreshMovements()
-      }
+      await actualizarListasFinancieras()
       return saved
     }
-    const next=movements.map(x=>x.id===m.id?m:x);setMovements(next);syncSales(next);return m
+    const aviso = validarMovimiento({ movimiento:m, vehiculos:vehicles, movimientos, original })
+    if (aviso) throw new Error(aviso)
+    setMovements(prev => prev.map(x => x.id === m.id ? m : x))
+    return m
   }
   const deleteMovement = async id => {
-    if (backendMode) { await eliminarMovimientoBackend(id);await refreshMovements();return true }
-    const next=movements.map(x=>x.id===id?{...x,deleted:true}:x);setMovements(next);syncSales(next);return true
+    if (backendMode) {
+      const datos = await consultarReglasActuales()
+      const actual = datos.movimientos.find(m => Number(m.id) === Number(id))
+      const vehiculo = datos.vehiculos.find(v => Number(v.id) === Number(actual?.vehicleId))
+      const aviso = validarEliminacionMovimiento({movimiento:actual,movimientos:datos.movimientos,vehiculo})
+      if (aviso) throw new Error(aviso)
+      await eliminarMovimientoBackend(id)
+      await actualizarListasFinancieras()
+      return true
+    }
+    const actual = movements.find(m => Number(m.id) === Number(id))
+    const vehiculo = vehicles.find(v => Number(v.id) === Number(actual?.vehicleId))
+    const aviso = validarEliminacionMovimiento({ movimiento:actual,movimientos,vehiculo })
+    if (aviso) throw new Error(aviso)
+    setMovements(prev => prev.map(x => Number(x.id) === Number(id) ? {...x,deleted:true} : x))
+    return true
   }
   const addUser = async u => {
     if (backendMode) { try {return await crearUsuarioBackend(u)} finally {await refreshUsers()} }
